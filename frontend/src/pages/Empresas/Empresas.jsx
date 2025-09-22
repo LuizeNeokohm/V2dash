@@ -19,9 +19,9 @@ const Empresas = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [focused, setFocused] = useState(false);
-  const [sortOrder, setSortOrder] = useState("asc"); // estado da ordenação
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [itemsPerPage, setItemsPerPage] = useState(10); // dinâmico
   const inputRef = useRef(null);
-  const itemsPerPage = 10;
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
@@ -63,6 +63,26 @@ const Empresas = () => {
     fetchEmpresas();
   }, []);
 
+  // Calcular dinamicamente quantas linhas cabem sem scroll
+  useEffect(() => {
+    const calcularLinhas = () => {
+      const alturaTela = window.innerHeight;
+      const alturaCabecalho = 200; // ajuste conforme sua página (header, filtros, margens)
+      const alturaRodape = 100; // espaço do footer/paginação
+      const alturaDisponivel = alturaTela - alturaCabecalho - alturaRodape;
+
+      const alturaLinha = 56; // altura média de uma <tr> (~56px)
+      const maxLinhas = Math.floor(alturaDisponivel / alturaLinha);
+
+      // limitar mínimo e máximo
+      setItemsPerPage(Math.max(5, Math.min(maxLinhas, 15)));
+    };
+
+    calcularLinhas();
+    window.addEventListener("resize", calcularLinhas);
+    return () => window.removeEventListener("resize", calcularLinhas);
+  }, []);
+
   // Modais
   const openConfirmModal = (empresa) =>
     setConfirmModal({ isOpen: true, empresa });
@@ -82,7 +102,6 @@ const Empresas = () => {
           { status: updatedStatus }
         );
         const empresaAtualizada = res.data;
-        console.log("Status atualizado:", empresaAtualizada);
 
         setEmpresas((prevEmpresas) =>
           prevEmpresas.map((emp) =>
@@ -103,7 +122,7 @@ const Empresas = () => {
   };
 
   return (
-    <div className="p-8 w-full min-h-screen flex flex-col bg-gray-50">
+    <div className="p-8 w-full h-screen overflow-hidden flex flex-col bg-gray-50">
       {/* Cabeçalho */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <h1 className="text-3xl font-extrabold text-gray-800">Empresas</h1>
@@ -128,7 +147,7 @@ const Empresas = () => {
 
       {/* Conteúdo */}
       <div className="bg-white shadow-lg rounded-2xl flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-100 text-gray-700 text-sm font-semibold uppercase sticky top-0 shadow-md">
               <tr>
@@ -142,13 +161,10 @@ const Empresas = () => {
                 <th className="py-4 px-6 text-right">Preferências</th>
               </tr>
             </thead>
-            <tbody className="text-gray-600 text-sm">
+            <tbody className="text-gray-600 text-sm divide-y divide-gray-300 border-b border-gray-300">
               {paginated.length > 0 ? (
                 paginated.map((empresa) => (
-                  <tr
-                    key={empresa.id}
-                    className="border-b hover:bg-gray-50 transition"
-                  >
+                  <tr key={empresa.id} className="hover:bg-gray-50 transition">
                     <td className="py-4 px-6 font-medium">{empresa.nome}</td>
                     <td className="py-4 px-6">
                       <SwitchButton
@@ -182,7 +198,7 @@ const Empresas = () => {
         </div>
 
         {/* Rodapé */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 py-4 bg-gray-50 border-t">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 py-4 bg-gray-50 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
           <span className="text-sm text-gray-600">
             {filtered.length} empresas encontradas
           </span>
@@ -252,7 +268,9 @@ const Empresas = () => {
               setPreferenciasModalOpen(false);
             } catch (error) {
               console.error("Erro ao atualizar preferências:", error);
-              alert("Não foi possível atualizar as preferências. Tente novamente.");
+              alert(
+                "Não foi possível atualizar as preferências. Tente novamente."
+              );
             }
           }}
         />
